@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Environment & secrets
+.env
+.env.local
+.env.*.local
+*.key
+secrets.json
+credentials.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Node (if any tooling)
+node_modules/
+npm-debug.log*
+
+# Output / data artifacts
+outputs/
+reports/*.html
+reports/*.pdf
+data/raw/
+data/cache/
+*.pkl
+*.parquet
+
+# Logs
+*.log
+logs/
+
+# Claude Code
+.claude/settings.local.json
