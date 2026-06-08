@@ -1,0 +1,47 @@
+{
+  "as_of": "2026-07-12",
+  "indicators": {
+    "vix_level": {
+      "channels": [
+        {"source": "fmp", "value": 15.0, "ts": "2026-07-11", "call": "quote ^VIX"},
+        {"source": "fred", "value": 15.2, "ts": "2026-07-11", "call": "series VIXCLS"},
+        {"source": "fgc", "value": 15.1, "ts": "2026-07-11", "call": "market ^VIX"}
+      ],
+      "history": [10, 12, 14, 16, 18]
+    },
+    "yield_curve_2s10s": {
+      "channels": [
+        {"source": "fmp", "components": {"y10": 4.5, "y2": 4.0}, "ts": "2026-07-11", "call": "treasury-rates"},
+        {"source": "fred", "value": 0.9, "ts": "2026-07-11", "call": "series T10Y2Y"}
+      ],
+      "history": [0.0, 0.2, 0.4, 0.6, 0.8]
+    },
+    "hy_credit_spread": {
+      "channels": [
+        {"source": "fred", "value": 3.0, "ts": "2026-07-11", "call": "series BAMLH0A0HYM2"}
+      ],
+      "history": [2.0, 2.5, 3.5, 4.0]
+    },
+    "putcall_ratio": {
+      "channels": [
+        {"source": "av", "value": 0.92, "ts": "2026-07-11", "call": "HISTORICAL_PUT_CALL_RATIO"},
+        {"source": "fgc", "value": 0.95, "ts": "2026-07-11", "call": "putcall"}
+      ],
+      "history": [0.7, 0.8, 0.9, 1.0, 1.1, 1.2]
+    },
+    "semis_vs_spy": {
+      "channels": [
+        {"source": "fmp", "components": {"smh": 250.0, "spy": 600.0}, "ts": "2026-07-11", "call": "quote SMH,SPY"},
+        {"source": "massive", "components": {"smh": 250.5, "spy": 600.0}, "ts": "2026-07-11", "call": "snapshot SMH,SPY"}
+      ],
+      "history": [0.38, 0.39, 0.40, 0.41, 0.42, 0.43]
+    },
+    "spx_rsi14": {
+      "channels": [
+        {"source": "fmp", "value": 61.0, "ts": "2026-07-11", "call": "rsi"},
+        {"source": "av", "value": 62.0, "ts": "2026-07-11", "call": "RSI"}
+      ],
+      "history": [40, 45, 50, 55, 60, 65, 70]
+    }
+  }
+}

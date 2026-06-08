@@ -1,0 +1,78 @@
+# Market Risk Assessment — {{ as_of }}
+
+> **Not a trading recommendation.** This brief presents cross-verified quantitative
+> indicators and their historical analogues for SPX, NDX, and SMH. It describes the
+> current *state* of risk sentiment; it does not tell anyone what to trade, when, or
+> at what price.
+
+## Composite state
+
+**Overall risk-off reading: {{ composite.overall if composite.overall is not none else "n/a" }} / 100** — {{ band }}
+(cross-channel agreement {{ composite.agreement_pct if composite.agreement_pct is not none else "n/a" }}%, weighting: {{ composite.weighting }}).
+
+| Layer | Score (0–100) | Indicators | Mean confidence |
+|---|---|---|---|
+{% for name, ly in composite.layers.items() -%}
+| {{ name }} | {{ ly.score if ly.score is not none else "—" }} | {{ ly.n }} | {{ ly.confidence if ly.confidence is not none else "—" }} |
+{% endfor %}
+*Score is a risk-off percentile: 100 = maximally risk-off / stressed vs. history, 0 = calm.*
+
+{% if composite.divergence_flags %}
+## ⚠ Cross-channel divergences ({{ composite.divergence_flags | length }})
+
+Signals where independent sources disagreed beyond tolerance — treat as low-confidence until reconciled.
+
+| Indicator | Layer | Rel. spread | Channel values |
+|---|---|---|---|
+{% for d in composite.divergence_flags -%}
+| {{ d.id }} | {{ d.layer }} | {{ d.divergence.rel_spread }} | {{ d.divergence['values'] | map(attribute='value') | join(" vs ") }} |
+{% endfor %}
+{% endif %}
+
+{% if composite.contrarian_flags %}
+## Contrarian extremes
+
+{% for f in composite.contrarian_flags -%}
+- **{{ f.id }}** — {{ f.kind }} ({{ f.note }}; percentile {{ f.value_pct }}).
+{% endfor %}
+{% endif %}
+
+## Indicators by layer
+
+{% for layer in layers_order %}
+{% set recs = by_layer[layer] %}
+{% if recs %}
+### {{ layer | capitalize }}
+
+| Indicator | Value | Percentile | State axis | Cross-check | Conf. | Channels |
+|---|---|---|---|---|---|---|
+{% for r in recs -%}
+| {{ r.id }}{% if r.provisional %} *(prov.)*{% endif %}{% if r.stale %} *(stale)*{% endif %} | {{ r.value if r.value is not none else "—" }} | {{ r.value_pct if r.value_pct is not none else "—" }} | {{ r.direction }} | {{ r.cross_check }} | {{ r.confidence if r.confidence is not none else "—" }} | {{ r.n_channels }} |
+{% endfor %}
+{% endif %}
+{% endfor %}
+
+{% if analogues %}
+## Historical analogues
+
+When indicators have sat in comparable states before, the subsequent {{ analogues.horizon }}-observation
+distribution of {{ analogues.benchmark }} returns looked like this (descriptive, not predictive):
+
+| Indicator | Current bucket | n prior | Mean fwd return | Negative-outcome rate |
+|---|---|---|---|---|
+{% for a in analogues.rows -%}
+| {{ a.id }} | {{ a.bucket_range }} | {{ a.n }} | {{ a.mean_fwd_return }}% | {{ a.neg_hit_rate }}% |
+{% endfor %}
+{% endif %}
+
+## Data provenance
+
+{% for r in provenance -%}
+- **{{ r.id }}**: {{ r.sources | join(", ") }}
+{% endfor %}
+
+---
+*Sources: FMP · FRED · Massive · FearGreedChart · Alpha Vantage. Numbers computed
+deterministically via the risk-agent engine (research_hub.calculator). Every headline
+signal is cross-verified across ≥2 independent channels or flagged provisional. This is
+research tooling, not investment advice.*

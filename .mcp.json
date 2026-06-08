@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "research_hub": {
+      "type": "stdio",
+      "command": "${HOME}/Documents/Workspace/equity_research/.venv/bin/python",
+      "args": [
+        "-m",
+        "research_hub.server"
+      ],
+      "cwd": "${HOME}/Documents/Workspace/equity_research",
+      "env": {
+        "RESEARCH_HUB_ASSETS_DIR": "${HOME}/Documents/Workspace/equity_research/../equity_research_assets"
+      }
+    }
+  }
+}

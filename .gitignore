@@ -32,6 +32,9 @@ credentials.json
 .ipynb_checkpoints/
 *.ipynb_checkpoints
 
+# Pytest
+.pytest_cache/
+
 # Node (if any tooling)
 node_modules/
 npm-debug.log*
@@ -44,6 +47,12 @@ data/raw/
 data/cache/
 *.pkl
 *.parquet
+
+# Research Hub operational state (lives in the assets repo, never in code repo)
+.research_hub/
+*.db
+# Local fixture render outputs
+tests/fixtures/sample_run/
 
 # Logs
 *.log

@@ -1,0 +1,17 @@
+# Research Hub MCP server
+mcp>=1.2.0
+
+# Knowledge graph
+networkx>=3.2
+
+# Visualization
+pyvis>=0.3.2
+plotly>=5.20
+
+# Data wrangling & templating
+pandas>=2.2
+jinja2>=3.1
+pyyaml>=6.0
+
+# Testing
+pytest>=8.0

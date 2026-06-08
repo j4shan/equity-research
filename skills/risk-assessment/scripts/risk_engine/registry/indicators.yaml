@@ -1,0 +1,223 @@
+# Indicator registry — the single source of truth for the risk agent.
+#
+# Every indicator is one declarative record. The engine, the MCP fetch spec, and
+# the report are all generated from this file — add an indicator HERE, not in code.
+#
+# Fields
+#   id            unique snake_case key
+#   layer         macro | sector | market | fear
+#   refresh_class daily | weekly | monthly   (drives the staleness clock)
+#   direction     risk_off_when_high | risk_off_when_low
+#                 (which extreme of the RAW quantity means "more risk-off / stress")
+#   contrarian    true when an extreme is a sentiment *contrarian* tell
+#                 (e.g. very low VIX = complacency); informational flag only
+#   transform     percentile_<N><d|w|m> | zscore_<N><...> | level_<N><...>
+#                 N = trailing window; value_pct is ALWAYS a 0-100 percentile rank,
+#                 the transform selects the extra display statistic
+#   formula       optional calc expression reducing a channel's `components` dict
+#                 to the indicator's scalar quantity (evaluated via calc_evaluate)
+#   tolerance     optional relative agreement tolerance for cross-check (default 0.05)
+#   channels      >=2 for a headline signal; a single-channel indicator is emitted
+#                 with a `provisional` flag and reduced confidence
+#                   source: fmp | fred | fgc | av | massive | aaii
+#                   call:   human-readable call the fetch layer must make
+#                   key:    (optional) field to read from the source payload
+#   thresholds    optional informational bands (not used by the math)
+#   note          optional human note
+
+# ─────────────────────────────── MACRO ───────────────────────────────
+- id: yield_curve_2s10s
+  layer: macro
+  refresh_class: daily
+  direction: risk_off_when_low        # inversion (low/negative) = risk-off
+  transform: percentile_252d
+  formula: "y10 - y2"
+  tolerance: 0.15                      # spread in %pts; wider rel-tol near zero
+  channels:
+    - {source: fmp,  call: "economics/treasury-rates", key: "year10-year2 -> components{y10,y2}"}
+    - {source: fred, call: "series T10Y2Y"}
+  thresholds: {inverted: "<0"}
+
+- id: yield_curve_3m10y
+  layer: macro
+  refresh_class: daily
+  direction: risk_off_when_low
+  transform: percentile_252d
+  formula: "y10 - y3m"
+  tolerance: 0.15
+  channels:
+    - {source: fmp,  call: "economics/treasury-rates", key: "year10-month3 -> components{y10,y3m}"}
+    - {source: fred, call: "series T10Y3M"}
+  thresholds: {inverted: "<0"}
+
+- id: hy_credit_spread
+  layer: macro
+  refresh_class: daily
+  direction: risk_off_when_high
+  transform: percentile_252d
+  channels:
+    - {source: fred, call: "series BAMLH0A0HYM2"}     # authoritative HY OAS
+  thresholds: {stress: ">6"}
+  note: single authoritative source -> emitted provisional; FGC HYG/LQD is a
+        different unit and tracked as its own confirming read, not a channel.
+
+- id: nfci
+  layer: macro
+  refresh_class: weekly
+  direction: risk_off_when_high
+  transform: zscore_260w
+  channels:
+    - {source: fred, call: "series NFCI"}             # Chicago Fed conditions
+  note: authoritative single source -> provisional.
+
+- id: stlfsi
+  layer: macro
+  refresh_class: weekly
+  direction: risk_off_when_high
+  transform: zscore_260w
+  channels:
+    - {source: fred, call: "series STLFSI4"}          # St. Louis Fed stress
+  note: authoritative single source -> provisional.
+
+- id: cpi_trend
+  layer: macro
+  refresh_class: monthly
+  direction: risk_off_when_high
+  transform: percentile_120m
+  channels:
+    - {source: fred, call: "series CPIAUCSL (yoy)", key: "yoy"}
+    - {source: av,   call: "CPI (annual/monthly)", key: "yoy"}
+
+# ─────────────────────────────── SECTOR ──────────────────────────────
+- id: sector_pe_technology
+  layer: sector
+  refresh_class: weekly
+  direction: risk_off_when_high        # stretched valuation = fragility
+  transform: percentile_260w
+  channels:
+    - {source: fmp, call: "marketPerformance/historical-sector-pe sector=Technology"}
+  note: FMP native sector P/E, single source -> provisional.
+
+- id: semis_vs_spy
+  layer: sector
+  refresh_class: daily
+  direction: risk_off_when_low         # semis leadership fading = risk-off
+  transform: percentile_252d
+  formula: "smh / spy"
+  channels:
+    - {source: fmp,     call: "quote SMH,SPY", key: "price -> components{smh,spy}"}
+    - {source: massive, call: "snapshot SMH,SPY", key: "last -> components{smh,spy}"}
+
+- id: semis_vs_qqq
+  layer: sector
+  refresh_class: daily
+  direction: risk_off_when_low
+  transform: percentile_252d
+  formula: "smh / qqq"
+  channels:
+    - {source: fmp,     call: "quote SMH,QQQ", key: "price -> components{smh,qqq}"}
+    - {source: massive, call: "snapshot SMH,QQQ", key: "last -> components{smh,qqq}"}
+
+- id: offense_defense_ratio
+  layer: sector
+  refresh_class: daily
+  direction: risk_off_when_low         # defensives leading = risk-off
+  transform: percentile_252d
+  formula: "xly / xlp"
+  channels:
+    - {source: fmp,     call: "quote XLY,XLP", key: "price -> components{xly,xlp}"}
+    - {source: massive, call: "snapshot XLY,XLP", key: "last -> components{xly,xlp}"}
+
+# ─────────────────────────────── MARKET ──────────────────────────────
+- id: spx_trend_200dma
+  layer: market
+  refresh_class: daily
+  direction: risk_off_when_low         # price below 200dma = risk-off
+  transform: percentile_252d
+  formula: "close / sma200 - 1"
+  channels:
+    - {source: fmp, call: "quote ^GSPC + technicalIndicators sma(200)", key: "components{close,sma200}"}
+    - {source: av,  call: "GLOBAL_QUOTE SPY + SMA(200)", key: "components{close,sma200}"}
+
+- id: ndx_breadth_pct_above_200
+  layer: market
+  refresh_class: daily
+  direction: risk_off_when_low         # thin breadth = risk-off
+  transform: percentile_252d
+  channels:
+    - {source: massive, call: "NDX constituents pct > 200dma (query_data)"}
+  note: computed breadth, single source -> provisional.
+
+- id: spx_rsi14
+  layer: market
+  refresh_class: daily
+  direction: risk_off_when_low         # oversold = stress
+  contrarian: true                     # overbought = complacency
+  transform: percentile_252d
+  channels:
+    - {source: fmp, call: "technicalIndicators rsi(14) ^GSPC"}
+    - {source: av,  call: "RSI(14) SPY"}
+  thresholds: {oversold: "<30", overbought: ">70"}
+
+- id: atr_percentile
+  layer: market
+  refresh_class: daily
+  direction: risk_off_when_high        # rising realized vol = risk-off
+  transform: percentile_252d
+  channels:
+    - {source: fmp, call: "technicalIndicators atr(14) ^GSPC"}
+    - {source: av,  call: "ATR(14) SPY"}
+
+# ──────────────────────────────── FEAR ───────────────────────────────
+- id: vix_level
+  layer: fear
+  refresh_class: daily
+  direction: risk_off_when_high        # high = fear
+  contrarian: true                     # very low = complacency
+  transform: percentile_252d
+  channels:
+    - {source: fmp,  call: "quote ^VIX"}
+    - {source: fred, call: "series VIXCLS"}
+    - {source: fgc,  call: "market ^VIX"}
+  thresholds: {complacency: "<15", stress: ">30"}
+
+- id: vix_term_structure
+  layer: fear
+  refresh_class: daily
+  direction: risk_off_when_high        # ratio>1 (backwardation) = stress
+  transform: percentile_252d
+  formula: "vix / vix3m"
+  channels:
+    - {source: fgc,     call: "market ^VIX,^VIX3M", key: "components{vix,vix3m}"}
+    - {source: massive, call: "snapshot VIX,VIX3M", key: "components{vix,vix3m}"}
+  thresholds: {backwardation: ">1"}
+
+- id: cot_specs_net_es
+  layer: fear
+  refresh_class: weekly
+  direction: risk_off_when_low         # crowded-long specs -> vulnerable
+  contrarian: true
+  transform: percentile_156w
+  channels:
+    - {source: fmp, call: "commitmentOfTraders symbol=ES (net specs / OI)"}
+  note: CFTC weekly, single source -> provisional; polled daily w/ staleness clock.
+
+- id: cot_specs_net_vx
+  layer: fear
+  refresh_class: weekly
+  direction: risk_off_when_low         # specs very short VIX = complacency
+  contrarian: true
+  transform: percentile_156w
+  channels:
+    - {source: fmp, call: "commitmentOfTraders symbol=VX (net specs / OI)"}
+  note: single source -> provisional.
+
+- id: putcall_ratio
+  layer: fear
+  refresh_class: daily
+  direction: risk_off_when_high        # high p/c = fear
+  contrarian: true                     # very low = complacency
+  transform: percentile_252d
+  channels:
+    - {source: av,  call: "HISTORICAL_PUT_CALL_RATIO"}
+    - {source: fgc, call: "putcall"}
